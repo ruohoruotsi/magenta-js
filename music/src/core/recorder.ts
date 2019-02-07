@@ -28,7 +28,7 @@ import {DEFAULT_QUARTERS_PER_MINUTE} from './constants';
  * @param playCountIn Whether to play a count-in click at the beginning of
  * the recording.
  * @param startRecordingAtFirstNote Whether to start the note time offset at
- * the first note received instead of the start of the recording.  Defaults to 
+ * the first note received instead of the start of the recording.  Defaults to
  * false.
  */
 interface RecorderConfig {
@@ -163,13 +163,13 @@ export class Recorder {
 
   private initClickLoop() {
     let clickStep = 0;
-    this.clickLoop = new Tone.Loop((_:number) => {
+    this.clickLoop = new Tone.Loop((time:number) => {
       // TODO(notwaldorf): It would be nice if this took into account a
       // time signature.
       if (clickStep % 4 === 0) {
-        this.loClick.triggerAttack('G5');
+        this.loClick.triggerAttack('G5', time);
       } else {
-        this.hiClick.triggerAttack('C6');
+        this.hiClick.triggerAttack('C6', time);
       }
       clickStep++;
       if (this.config.playCountIn && clickStep === 4) {
@@ -217,7 +217,7 @@ export class Recorder {
     this.firstNoteTimestamp = undefined;
     this.notes = [];
     this.onNotes = new Map<number, NoteSequence.Note>();
-    
+
    if (!this.startRecordingAtFirstNote) {
     const timeStamp: number = Date.now();
     this.firstNoteTimestamp = timeStamp;
@@ -292,8 +292,14 @@ export class Recorder {
 
     // event.timeStamp doesn't seem to work reliably across all
     // apps and controllers (sometimes it isn't set, sometimes it doesn't
-    // change between notes). Use the actual message time for now.
-    const timeStamp: number = Date.now();
+    // change between notes). Use the performance now timing, unless it exists.
+    let timeStampOffset;
+    if (event.timeStamp !== undefined && event.timeStamp !== 0) {
+      timeStampOffset = event.timeStamp;
+    } else {
+      timeStampOffset = performance.now();
+    }
+    const timeStamp = timeStampOffset + performance.timing.navigationStart;
 
     // Save the first note.
     if (this.firstNoteTimestamp === undefined) {
